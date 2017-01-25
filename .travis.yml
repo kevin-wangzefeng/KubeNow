@@ -54,7 +54,7 @@ install:
   - sudo chmod +x /usr/bin/terraform
   # Install Ansible
   - sudo pip install --upgrade pip
-  - sudo pip install ansible==2.2.0.0
+  - sudo pip install ansible==2.2.1.0
   # Install other deps
   - sudo pip install dnspython
   # Install OpenStack deps
