@@ -55,7 +55,7 @@ module "master" {
   # Disk settings
   extra_disk_size = "0"
   # Bootstrap settings
-  bootstrap_file = "bootstrap/master.sh"
+  bootstrap_file = "bootstrap/install_python_and_docker.sh"
   kubeadm_token = "${var.kubeadm_token}"
   node_labels = [""]
   node_taints = [""]
@@ -80,7 +80,7 @@ module "node" {
   # Disk settings
   extra_disk_size = "0"
   # Bootstrap settings
-  bootstrap_file = "bootstrap/node.sh"
+  bootstrap_file = "bootstrap/install_python_and_docker.sh"
   kubeadm_token = "${var.kubeadm_token}"
   node_labels = ["role=node"]
   node_taints = [""]
@@ -105,7 +105,7 @@ module "edge" {
    # Disk settings
   extra_disk_size = "0"
   # Bootstrap settings
-  bootstrap_file = "bootstrap/node.sh"
+  bootstrap_file = "bootstrap/install_python_and_docker.sh"
   kubeadm_token = "${var.kubeadm_token}"
   node_labels = ["role=edge"]
   node_taints = [""]
@@ -128,7 +128,7 @@ resource "null_resource" "generate-inventory" {
   }
   # output the lists formated
   provisioner "local-exec" {
-    command =  "echo \"${join("\n",formatlist("%s ansible_ssh_host=%s ansible_ssh_user=ubuntu", module.master.hostnames, module.master.public_ip))}\" >> inventory"
+    command =  "echo \"${join("\n",formatlist("%s ansible_ssh_host=%s ansible_ssh_user=root", module.master.hostnames, module.master.public_ip))}\" >> inventory"
   }
 
   # Write edges
@@ -137,7 +137,7 @@ resource "null_resource" "generate-inventory" {
   }
   # output the lists formated
   provisioner "local-exec" {
-    command =  "echo \"${join("\n",formatlist("%s ansible_ssh_host=%s ansible_ssh_user=ubuntu", module.edge.hostnames, module.edge.public_ip))}\" >> inventory"
+    command =  "echo \"${join("\n",formatlist("%s ansible_ssh_host=%s ansible_ssh_user=root", module.edge.hostnames, module.edge.public_ip))}\" >> inventory"
   }
 
   # Write other variables
