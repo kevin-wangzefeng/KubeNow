@@ -6,6 +6,12 @@ variable external_network_uuid {}
 variable dns_nameservers { default="8.8.8.8,8.8.4.4" }
 variable floating_ip_pool {}
 variable kubeadm_token {}
+variable kube_repo_prefix { default="gcr.io/google_containers"}
+variable kubernetes_version {}
+
+variable create_new_internal_network {}
+variable reuse_internal_network_name {}
+variable reuse_secgroup_name {}
 
 # Master settings
 variable master_count { default = 1 }
@@ -29,13 +35,15 @@ module "keypair" {
   name_prefix = "${var.cluster_prefix}"
 }
 
-# Network (here would be nice with condition)
-module "network" {
-  source = "./network"
-  external_net_uuid = "${var.external_network_uuid}"
-  name_prefix = "${var.cluster_prefix}"
-  dns_nameservers = "${var.dns_nameservers}"
-}
+#if "${var.create_new_internal_network}" {
+#  # Network 
+#  module "network" {
+#    source = "./network"
+#    external_net_uuid = "${var.external_network_uuid}"
+#    name_prefix = "${var.cluster_prefix}"
+#    dns_nameservers = "${var.dns_nameservers}"
+#  }
+#}
 
 module "master" {
   # Core settings
@@ -48,14 +56,19 @@ module "master" {
   # SSH settings
   keypair_name = "${module.keypair.keypair_name}"
   # Network settings
-  network_name = "${module.network.network_name}"
-  secgroup_name = "${module.network.secgroup_name}"
-  assign_floating_ip = "true"
+ # if "${var.create_new_internal_network}" {
+ #   network_name = "${module.network.network_name}"
+ #   secgroup_name = "${module.network.secgroup_name}"
+ # } else {
+    network_name = "${var.reuse_internal_network_name}"
+    secgroup_name = "${var.reuse_secgroup_name}"
+ # }
+  assign_floating_ip = "false"
   floating_ip_pool = "${var.floating_ip_pool}"
   # Disk settings
   extra_disk_size = "0"
   # Bootstrap settings
-  bootstrap_file = "bootstrap/install_python_and_docker.sh"
+  bootstrap_file = "bootstrap/initialize_master.sh"
   kubeadm_token = "${var.kubeadm_token}"
   node_labels = [""]
   node_taints = [""]
@@ -73,14 +86,19 @@ module "node" {
   # SSH settings
   keypair_name = "${module.keypair.keypair_name}"
   # Network settings
-  network_name = "${module.network.network_name}"
-  secgroup_name = "${module.network.secgroup_name}"
+ # if "${var.create_new_internal_network}" {
+ #   network_name = "${module.network.network_name}"
+ #   secgroup_name = "${module.network.secgroup_name}"
+ # } else {
+    network_name = "${var.reuse_internal_network_name}"
+    secgroup_name = "${var.reuse_secgroup_name}"
+ # }
   assign_floating_ip = "false"
   floating_ip_pool = ""
   # Disk settings
   extra_disk_size = "0"
   # Bootstrap settings
-  bootstrap_file = "bootstrap/install_python_and_docker.sh"
+  bootstrap_file = "bootstrap/initialize_node.sh"
   kubeadm_token = "${var.kubeadm_token}"
   node_labels = ["role=node"]
   node_taints = [""]
@@ -98,14 +116,19 @@ module "edge" {
   # SSH settings
   keypair_name = "${module.keypair.keypair_name}"
   # Network settings
-  network_name = "${module.network.network_name}"
-  secgroup_name = "${module.network.secgroup_name}"
+ # if "${var.create_new_internal_network}" {
+ #   network_name = "${module.network.network_name}"
+ #   secgroup_name = "${module.network.secgroup_name}"
+ # } else {
+    network_name = "${var.reuse_internal_network_name}"
+    secgroup_name = "${var.reuse_secgroup_name}"
+ # }
   assign_floating_ip = "true"
   floating_ip_pool = "${var.floating_ip_pool}"
    # Disk settings
   extra_disk_size = "0"
   # Bootstrap settings
-  bootstrap_file = "bootstrap/install_python_and_docker.sh"
+  bootstrap_file = "bootstrap/initialize_master.sh"
   kubeadm_token = "${var.kubeadm_token}"
   node_labels = ["role=edge"]
   node_taints = [""]
@@ -128,7 +151,9 @@ resource "null_resource" "generate-inventory" {
   }
   # output the lists formated
   provisioner "local-exec" {
-    command =  "echo \"${join("\n",formatlist("%s ansible_ssh_host=%s ansible_ssh_user=root", module.master.hostnames, module.master.public_ip))}\" >> inventory"
+    # command =  "echo \"${join("\n",formatlist("%s ansible_ssh_host=%s ansible_ssh_user=root", module.master.hostnames, module.master.public_ip))}\" >> inventory"
+    command =  "echo \"${join("\n",formatlist("%s ansible_ssh_host=%s ansible_ssh_user=root", module.master.hostnames, module.master.local_ip_v4))}\" >> inventory"
+
   }
 
   # Write edges
@@ -146,6 +171,14 @@ resource "null_resource" "generate-inventory" {
   }
   provisioner "local-exec" {
     command =  "echo \"nodes_count=${1 + var.edge_count + var.node_count} \" >> inventory"
+  }
+
+  # Write nodes
+  provisioner "local-exec" {
+    command =  "echo \"[node]\" >> inventory"
+  }
+  provisioner "local-exec" {
+    command =  "echo \"${join("\n",formatlist("%s ansible_ssh_host=%s ansible_ssh_user=root", module.node.hostnames, module.node.local_ip_v4))} \" >> inventory"
   }
 
 }
