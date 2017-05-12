@@ -56,16 +56,24 @@ export OS_IMAGE_API_VERSION=2
 export OS_VOLUME_API_VERSION=2
 export OS_REGION_NAME=RegionOne
 
-mkdir -p  /home/v1.7.0-test392
-swift download v1.7.0-test392 -D /home/v1.7.0-test392
 
-chmod +x -R /home/v1.7.0-test392/node-bins/
-mv /home/v1.7.0-test392/node-bins/* /usr/bin
+if [[ "${swift_bucket}_xxx" != "_xxx" ]]; then
+  echo "download kubeadm kubelet binaries from swift bucket ${swift_bucket}"
+  DOWNLOAD_TMP=/home/${swift_bucket}
+  mkdir -p  $DOWNLOAD_TMP
+  swift download ${swift_bucket} -D $DOWNLOAD_TMP
 
-mkdir -p /etc/systemd/system/kubelet.service.d/
-mv /home/v1.7.0-test392/10-kubeadm.conf /etc/systemd/system/kubelet.service.d/
-mv /home/v1.7.0-test392/kubelet.service /lib/systemd/system/
-systemctl daemon-reload
+  chmod +x -R $DOWNLOAD_TMP/node-bins/
+  mv $DOWNLOAD_TMP/node-bins/* /usr/bin
+
+  mkdir -p /etc/systemd/system/kubelet.service.d/
+  mv $DOWNLOAD_TMP/10-kubeadm.conf /etc/systemd/system/kubelet.service.d/
+  mv $DOWNLOAD_TMP/kubelet.service /lib/systemd/system/
+  systemctl daemon-reload
+else
+  echo "fetching kubeadm and kubelet binaries through apt-get"
+  apt-get install -y kubeadm kubelet kubernetes-cni
+fi
 
 echo "Running node"
 echo "Try to join master..."

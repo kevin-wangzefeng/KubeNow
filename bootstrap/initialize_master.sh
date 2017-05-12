@@ -56,27 +56,32 @@ export OS_IMAGE_API_VERSION=2
 export OS_VOLUME_API_VERSION=2
 export OS_REGION_NAME=RegionOne
 
-mkdir -p  /home/v1.7.0-test392
-swift download v1.7.0-test392 -D /home/v1.7.0-test392
+if [[ "${swift_bucket}_xxx" != "_xxx" ]]; then
+  echo "download kubeadm kubelet binaries from swift bucket ${swift_bucket}"
+  DOWNLOAD_TMP=/home/${swift_bucket}
+  mkdir -p  $DOWNLOAD_TMP
+  swift download ${swift_bucket} -D $DOWNLOAD_TMP
 
-chmod +x -R /home/v1.7.0-test392/node-bins/
-mv /home/v1.7.0-test392/node-bins/* /usr/bin
+  chmod +x -R $DOWNLOAD_TMP/node-bins/
+  mv $DOWNLOAD_TMP/node-bins/* /usr/bin
 
-mkdir -p /etc/systemd/system/kubelet.service.d/
-mv /home/v1.7.0-test392/10-kubeadm.conf /etc/systemd/system/kubelet.service.d/
-mv /home/v1.7.0-test392/kubelet.service /lib/systemd/system/
-systemctl daemon-reload
+  mkdir -p /etc/systemd/system/kubelet.service.d/
+  mv $DOWNLOAD_TMP/10-kubeadm.conf /etc/systemd/system/kubelet.service.d/
+  mv $DOWNLOAD_TMP/kubelet.service /lib/systemd/system/
+  systemctl daemon-reload
+else
+  echo "fetching kubeadm and kubelet binaries through apt-get"
+  apt-get install -y kubeadm kubelet kubernetes-cni
+fi
 
 echo "Running on master"
-# KUBE_REPO_PREFIX=10.145.208.152:5000 kubeadm --kubernetes-version=v1.7.0-test392 init --token af1abe.18cada885a53ed20
-KUBE_REPO_PREFIX=10.145.208.152:5000 kubeadm --kubernetes-version=v1.7.0-test392 init --token ${kubeadm_token}
+KUBE_REPO_PREFIX=${kube_repo_prefix} kubeadm --kubernetes-version=${kubernetes_version} init --token ${kubeadm_token}
 
-echo "copy admin.conf to home"
+echo "copy config file for kubectl to home"
 USER=$(whoami)
 HOME=$(awk -F: -v v="$USER" '{if ($1==v) print $6}' /etc/passwd)
 cp /etc/kubernetes/admin.conf $HOME/
 chown $(id -u):$(id -g) $HOME/admin.conf
-echo "add env var to bashrc"
 cat <<EOF >>$HOME/.bashrc
 export KUBECONFIG=$HOME/admin.conf
 EOF

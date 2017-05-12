@@ -6,8 +6,9 @@ variable external_network_uuid {}
 variable dns_nameservers { default="8.8.8.8,8.8.4.4" }
 variable floating_ip_pool {}
 variable kubeadm_token {}
-variable kube_repo_prefix { default="gcr.io/google_containers"}
+variable kube_repo_prefix { default="gcr.io/google_containers" }
 variable kubernetes_version {}
+variable swift_bucket { default="" }
 
 variable create_new_internal_network {}
 variable reuse_internal_network_name {}
@@ -69,10 +70,13 @@ module "master" {
   extra_disk_size = "0"
   # Bootstrap settings
   bootstrap_file = "bootstrap/initialize_master.sh"
+  kube_repo_prefix = "${var.kube_repo_prefix}"
+  kubernetes_version = "${var.kubernetes_version}"
   kubeadm_token = "${var.kubeadm_token}"
   node_labels = [""]
   node_taints = [""]
   master_ip = ""
+  swift_bucket = "${var.swift_bucket}"
 }
 
 module "node" {
@@ -103,6 +107,7 @@ module "node" {
   node_labels = ["role=node"]
   node_taints = [""]
   master_ip = "${element(module.master.local_ip_v4, 0)}"
+  swift_bucket = "${var.swift_bucket}"
 }
 
 module "edge" {
@@ -133,6 +138,7 @@ module "edge" {
   node_labels = ["role=edge"]
   node_taints = [""]
   master_ip = "${element(module.master.local_ip_v4, 0)}"
+  swift_bucket = "${var.swift_bucket}"
 }
 
 # Generate Ansible inventory (identical for each cloud provider)
