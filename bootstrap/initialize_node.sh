@@ -32,7 +32,7 @@ EOF
 apt-get update
 # Install docker if you don't have it already.
 # Install ebtables socat for kubeadm
-apt-get install -y docker-engine ebtables socat
+apt-get install -y docker-engine ebtables socat kubernetes-cni
 
 # set private docker registry
 cat <<EOF >/etc/docker/daemon.json
@@ -72,7 +72,7 @@ if [[ "${swift_bucket}_xxx" != "_xxx" ]]; then
   systemctl daemon-reload
 else
   echo "fetching kubeadm and kubelet binaries through apt-get"
-  apt-get install -y kubeadm kubelet kubernetes-cni
+  apt-get install -y kubeadm kubelet
 fi
 
 echo "Running node"

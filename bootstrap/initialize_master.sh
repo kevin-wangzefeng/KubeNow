@@ -32,7 +32,7 @@ EOF
 apt-get update
 # Install docker if you don't have it already.
 # Install ebtables socat for kubeadm
-apt-get install -y docker-engine ebtables socat
+apt-get install -y docker-engine ebtables socat kubernetes-cni
 
 # set private docker registry
 cat <<EOF >/etc/docker/daemon.json
@@ -71,11 +71,18 @@ if [[ "${swift_bucket}_xxx" != "_xxx" ]]; then
   systemctl daemon-reload
 else
   echo "fetching kubeadm and kubelet binaries through apt-get"
-  apt-get install -y kubeadm kubelet kubernetes-cni
+  apt-get install -y kubeadm kubelet
 fi
 
 echo "Running on master"
-KUBE_REPO_PREFIX=${kube_repo_prefix} kubeadm --kubernetes-version=${kubernetes_version} init --token ${kubeadm_token}
+KUBE_REPO_PREFIX=${kube_repo_prefix} kubeadm --kubernetes-version=${kubernetes_version} init --token ${kubeadm_token} --pod-network-cidr=10.244.0.0/16
+
+export KUBECONFIG=/etc/kubernetes/admin.conf
+kubectl create -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel-rbac.yml
+# export ARCH=amd64
+# curl -sSL "https://github.com/coreos/flannel/blob/master/Documentation/kube-flannel.yml?raw=true" | sed "s/amd64/$ARCH/g" | kubectl create -f -
+kubectl create -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+# kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/kubernetes-dashboard.yaml
 
 echo "copy config file for kubectl to home"
 USER=$(whoami)
